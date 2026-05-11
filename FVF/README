@@ -1,0 +1,77 @@
+# Dashboard Fraude Kilométrique
+
+Dashboard de suivi des distances parcourues **hors journée de travail** par les conducteurs de la flotte véhicules.
+
+## Fonctionnalités
+
+- Top 10 global des conducteurs avec le plus de km HP (tous mois confondus)
+- Top 10 par mois avec sélecteur de mois
+- Filtre par service
+- Export CSV des tableaux
+- Rafraîchissement des données depuis GitLab
+- Envoi automatique du rapport par mail (hebdomadaire)
+
+## Stack technique
+
+- **Python 3.12**
+- **Streamlit** - dashboard web
+- **Pandas** - traitement des données
+- **GitLab API** - source des fichiers Excel
+
+## Structure du projet
+
+```
+analyse-kilometrique-flotte/
+├── app.py              # Application Streamlit principale
+├── data_loader.py      # Chargement des fichiers Excel depuis GitLab
+├── compute.py          # Calculs top 10 global et par mois
+├── emailer.py          # Envoi automatique du rapport par mail
+├── requirements.txt    # Dépendances Python
+├── .env                # Variables d'environnement (gitignored)
+└── env.example         # Template des variables d'environnement
+```
+
+## Installation
+
+```bash
+git clone https://gitlab.internal.ftth.iliad.fr/Mozarrouk/analyse-kilometrique-flotte.git
+cd analyse-kilometrique-flotte
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+## Configuration
+
+Crée un fichier `.env` à la racine basé sur `env.example` :
+
+```
+GITLAB_TOKEN=ton_token_gitlab
+FILE_CND=telematique__cnd-YYYY-MM-DD.xlsx
+FILE_CNC=telematique__cnc-YYYY-MM-DD.xlsx
+STREAMLIT_URL=http://ton-serveur:8501
+SMTP_HOST=smtp.iliad-free.fr
+SMTP_PORT=587
+SMTP_USER=mrzarrouk@iliad-free.fr
+SMTP_PASSWORD=ton_mot_de_passe
+RECIPIENTS=ngeniteau@iliad-free.fr
+```
+
+## Lancement
+
+```bash
+source venv/bin/activate
+set -a; source .env; set +a
+streamlit run app.py
+```
+
+## Mise à jour des données
+
+1. Exporter les nouveaux fichiers Excel depuis DataX
+2. Les pusher sur GitLab en remplaçant les anciens
+3. Mettre à jour `FILE_CND` et `FILE_CNC` dans `.env` si le nom du fichier a changé
+4. Cliquer sur **Rafraîchir** dans le dashboard
+
+## Auteur
+
+Mohamed Zarrouk - Iliad / Free
