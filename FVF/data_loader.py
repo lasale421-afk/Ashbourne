@@ -17,7 +17,6 @@ def _fetch_excel(filename:str)->pd.DataFrame:
     r.raise_for_status()
     return pd.read_excel(BytesIO(r.content))
 
-@st.cache_data
 def load_data() -> tuple[pd.DataFrame, pd.DataFrame]:
     df_cnd = _fetch_excel(FILE_CND)
     df_cnc = _fetch_excel(FILE_CNC)
