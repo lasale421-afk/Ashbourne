@@ -18,7 +18,6 @@ def send_weekly_report():
     msg["Subject"] = f"[Télématique] Top 10 Fraude Kilométrique - {today}"
     msg["From"] = SMTP_USER
     msg["To"] = ", ".join(RECIPIENTS)
-
     html = f"""
     <html>
       <body style="font-family: Arial, sans-serif; color: #333;">
