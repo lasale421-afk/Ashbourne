@@ -5,26 +5,23 @@ from datetime import date
 from data_loader import load_data
 from compute import top10_global
 
-def get_top3_services(df_cnd, df_cnc):
-    df_merged = df_cnd.merge(df_cnc[["id_irm", "service"]], on="id_irm", how="left")
+def get_top3_services(df_cnd):
     return (
-        df_merged[df_merged["service"].notna() & (df_merged["service"] != "(null)")]
-        .groupby("service")["distance_parcourue_en_km"]
+        df_cnd[df_cnd["is_hp"] == 1]
+        [df_cnd["service_irm"].notna() & (df_cnd["service_irm"] != "(null)") & (df_cnd["service_irm"] != "")]
+        .groupby("service_irm")["distance_parcourue_en_km"]
         .sum()
         .sort_values(ascending=False)
         .head(3)
         .index.tolist()
     )
 
-def export_service(df_cnd, df_cnc, service, today):
+def export_service(df_cnd, service, today):
     """Génère un fichier Excel pour un service donné."""
-    # Filtrer par service
-    ids_service = df_cnc[df_cnc["service"] == service]["id_irm"].unique()
-    df_cnd_service = df_cnd[df_cnd["id_irm"].isin(ids_service)]
-    df_cnc_service = df_cnc[df_cnc["service"] == service]
+    df_service = df_cnd[df_cnd["service_irm"] == service]
 
     # Top 10 du service
-    df_top10 = top10_global(df_cnc_service, df_cnd_service)
+    df_top10 = top10_global(df_service, service_choisi=service)
 
     # Nom du fichier - enlever les caractères spéciaux pour Windows
     service_clean = "".join(c for c in service if c.isalnum() or c in " _-").strip()
@@ -44,8 +41,8 @@ def export_service(df_cnd, df_cnc, service, today):
                 (df_cnd["is_hp"] == 1)
             ][["immatriculation", "id_irm", "nom_irm", "prenom_irm", "by_date", "distance_parcourue_en_km"]]
 
-            print(f"{nom} - {len(df_detail)} trajets HP")
-            df_detail.to_excel(writer, sheet_name=nom, index=False)
+            if not df_detail.empty:
+                df_detail.to_excel(writer, sheet_name=nom, index=False)
 
     print(f"Export généré : {filename}")
     return filename
@@ -65,18 +62,18 @@ def send_mail(filepaths):
     print(f"Mail envoyé à ngeniteau@iliad-free.fr")
 
 def export_excel():
-    df_cnc, df_cnd = load_data()
+    df_cnd = load_data()
     today = date.today().strftime("%Y-%m-%d")
 
-    top3_services = get_top3_services(df_cnd, df_cnc)
+    top3_services = get_top3_services(df_cnd)
     print(f"Top 3 services : {top3_services}")
 
     filepaths = []
     for service in top3_services:
-        filepath = export_service(df_cnd, df_cnc, service, today)
+        filepath = export_service(df_cnd, service, today)
         filepaths.append(filepath)
 
-    send_mail(filepaths)
+    #send_mail(filepaths)
 
 if __name__ == "__main__":
     export_excel()
