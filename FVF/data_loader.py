@@ -37,4 +37,7 @@ def load_data() -> tuple[pd.DataFrame, pd.DataFrame]:
     print("CNC columns:", df_cnc.columns.tolist())
     df_cnd["id_irm"] = pd.to_numeric(df_cnd["id_irm"], errors="coerce")
     df_cnc["id_irm"] = pd.to_numeric(df_cnc["id_irm"], errors="coerce")
+
+    ids_a_exclure = df_cnd[df_cnd["distance_parcourue_en_km"] > 1000]["id_irm"].unique()
+    df_cnd = df_cnd[~df_cnd["id_irm"].isin(ids_a_exclure)]
     return df_cnc, df_cnd  

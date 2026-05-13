@@ -44,6 +44,7 @@ def export_service(df_cnd, df_cnc, service, today):
                 (df_cnd["is_hp"] == 1)
             ][["immatriculation", "id_irm", "nom_irm", "prenom_irm", "by_date", "distance_parcourue_en_km"]]
 
+            print(f"{nom} - {len(df_detail)} trajets HP")
             df_detail.to_excel(writer, sheet_name=nom, index=False)
 
     print(f"Export généré : {filename}")

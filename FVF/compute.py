@@ -13,7 +13,7 @@ def top10_global(df_cnd: pd.DataFrame, df_cnc: pd.DataFrame, service_choisi: str
         .reset_index()
         .rename(columns={"sum(distance_km_hp)": "total_km_hp"})
         .sort_values("total_km_hp", ascending=False)
-        .head(11)
+        .head(10)
     )
     result = _enrich(agg, df_cnc)
     result = result[result["nom_irm"].notna() & (result["nom_irm"] != "")]
@@ -33,7 +33,7 @@ def top10_par_mois(df_cnd: pd.DataFrame, df_cnc: pd.DataFrame, mois_choisi: str,
         .reset_index()
         .rename(columns={"sum(distance_km_hp)": "total_km_hp"})
         .sort_values("total_km_hp", ascending=False)
-        .head(11)
+        .head(10)
     )
     result = _enrich(agg, df_cnc)
     result = result[result["nom_irm"].notna() & (result["nom_irm"] != "")]
