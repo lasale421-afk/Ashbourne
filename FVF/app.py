@@ -2,7 +2,6 @@ import streamlit as st
 from data_loader import load_data
 from compute import top10_global, top10_par_mois
 import pandas as pd
-from emailer import send_weekly_report
 import plotly.express as px
 import io
 
@@ -56,13 +55,6 @@ if page == "🏠 Accueil":
     - Rafraîchir les données depuis GitLab
     """)
     
-
-    if st.button("📧 Envoyer le rapport par mail"):
-        try:
-            send_weekly_report()
-            st.success("Mail envoyé à ngeniteau@iliad-free.fr !")
-        except Exception as e:
-            st.error(f"Erreur d'envoi : {e}")
 
 
 # --- TOP 10 GLOBAL ---

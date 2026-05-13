@@ -7,16 +7,18 @@ Dashboard de suivi des distances parcourues **hors journée de travail** par les
 - Top 10 global des conducteurs avec le plus de km HP (tous mois confondus)
 - Top 10 par mois avec sélecteur de mois
 - Filtre par service
-- Export CSV des tableaux
+- Export CSV et Excel des tableaux
 - Rafraîchissement des données depuis GitLab
-- Envoi automatique du rapport par mail (hebdomadaire)
+- Génération automatique de 3 fichiers Excel (top 3 services) avec envoi par mail via Outlook
 
 ## Stack technique
 
 - **Python 3.12**
 - **Streamlit** - dashboard web
 - **Pandas** - traitement des données
+- **Plotly** - graphiques
 - **GitLab API** - source des fichiers Excel
+- **win32com / Outlook** - envoi automatique des mails
 
 ## Structure du projet
 
@@ -25,7 +27,8 @@ analyse-kilometrique-flotte/
 ├── app.py              # Application Streamlit principale
 ├── data_loader.py      # Chargement des fichiers Excel depuis GitLab
 ├── compute.py          # Calculs top 10 global et par mois
-├── emailer.py          # Envoi automatique du rapport par mail
+├── export.py           # Génération des fichiers Excel + envoi mail
+├── emailer.py          # (réservé pour envoi SMTP si disponible)
 ├── requirements.txt    # Dépendances Python
 ├── .env                # Variables d'environnement (gitignored)
 └── env.example         # Template des variables d'environnement
@@ -37,7 +40,13 @@ analyse-kilometrique-flotte/
 git clone https://gitlab.internal.ftth.iliad.fr/Mozarrouk/analyse-kilometrique-flotte.git
 cd analyse-kilometrique-flotte
 python3 -m venv venv
+
+# Linux/Mac
 source venv/bin/activate
+
+# Windows
+venv\Scripts\activate
+
 pip install -r requirements.txt
 ```
 
@@ -47,31 +56,57 @@ Crée un fichier `.env` à la racine basé sur `env.example` :
 
 ```
 GITLAB_TOKEN=ton_token_gitlab
-FILE_CND=telematique__cnd-YYYY-MM-DD.xlsx
-FILE_CNC=telematique__cnc-YYYY-MM-DD.xlsx
-STREAMLIT_URL=http://ton-serveur:8501
-SMTP_HOST=smtp.iliad-free.fr
-SMTP_PORT=587
-SMTP_USER=mrzarrouk@iliad-free.fr
-SMTP_PASSWORD=ton_mot_de_passe
-RECIPIENTS=ngeniteau@iliad-free.fr
 ```
 
-## Lancement
+Les fichiers Excel sont récupérés automatiquement depuis GitLab - le script prend toujours le fichier le plus récent commençant par `telematique__cnd` et `telematique__cnc`.
+
+## Lancement du dashboard
 
 ```bash
+# Linux/Mac
 source venv/bin/activate
 set -a; source .env; set +a
 streamlit run app.py
+
+# Windows
+venv\Scripts\activate
+$env:GITLAB_TOKEN="ton_token"
+streamlit run app.py
 ```
+
+## Génération et envoi du rapport hebdomadaire
+
+```bash
+python export.py
+```
+
+Ce script :
+1. Récupère les données depuis GitLab
+2. Identifie les 3 services avec le plus de km HP
+3. Génère 3 fichiers Excel (un par service) avec un onglet Top 10 + un onglet par conducteur
+4. Envoie les 3 fichiers par mail via Outlook à ngeniteau@iliad-free.fr
+
+## Automatisation hebdomadaire
+
+Le script peut être automatisé via le **Planificateur de tâches Windows** :
+- Programme : `chemin\vers\venv\Scripts\python.exe`
+- Arguments : `export.py`
+- Dossier de démarrage : `chemin\vers\le\projet\FVF`
+
+⚠️ **Le PC doit être allumé** au moment du déclenchement pour que l'envoi soit effectué.
+
+## Limitations et évolutions futures
+
+Pour une automatisation complète sans contrainte matérielle (PC allumé obligatoire), il faudra héberger le script sur un serveur interne Iliad. Contacter l'IT pour la mise en place.
+
+Le dashboard Streamlit pourra également être hébergé sur un serveur interne et intégré à DataX.
 
 ## Mise à jour des données
 
 1. Exporter les nouveaux fichiers Excel depuis DataX
-2. Les pusher sur GitLab en remplaçant les anciens
-3. Mettre à jour `FILE_CND` et `FILE_CNC` dans `.env` si le nom du fichier a changé
-4. Cliquer sur **Rafraîchir** dans le dashboard
+2. Les pusher sur GitLab (branche `main`)
+3. Le script récupère automatiquement les fichiers les plus récents
 
 ## Auteur
 
-Mohamed Zarrouk - Iliad / Free
+Mohamed Reda Zarrouk - Iliad / Free
