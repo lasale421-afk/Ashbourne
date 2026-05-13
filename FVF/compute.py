@@ -19,8 +19,6 @@ def top10_global(df_cnd: pd.DataFrame, df_cnc: pd.DataFrame, service_choisi: str
     result = result[result["nom_irm"].notna() & (result["nom_irm"] != "")]
     result = result[result["prenom_irm"].notna() & (result["prenom_irm"] != "")]
     result["rang"] = range(1, len(result) + 1)
-    print("df_global shape:", result.shape)
-    print(result.head())
     return result[["rang", "nom_irm", "prenom_irm", "id_irm", "immatriculation", "total_km_hp"]]
 
 def top10_par_mois(df_cnd: pd.DataFrame, df_cnc: pd.DataFrame, mois_choisi: str, service_choisi: str = "Tous") -> pd.DataFrame:

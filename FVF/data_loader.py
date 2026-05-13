@@ -8,9 +8,16 @@ GITLAB_TOKEN = os.getenv("GITLAB_TOKEN")
 PORJECT_ID = "1681"
 BRANCH = "main"
 BASE_URL = f"https://gitlab.internal.ftth.iliad.fr/api/v4/projects/1681/repository/files"
-FILE_CND = os.getenv("FILE_CND", "telematique__cnd-2026-05-11.xlsx")
-FILE_CNC = os.getenv("FILE_CNC", "telematique__cnc-2026-05-11.xlsx")
 
+
+def _get_latest_file(prefix: str) -> str:
+    url = f"https://gitlab.internal.ftth.iliad.fr/api/v4/projects/1681/repository/tree?ref={BRANCH}&per_page=100"
+    r = requests.get(url, headers={"PRIVATE-TOKEN": GITLAB_TOKEN})
+    r.raise_for_status()
+    files = [f["name"] for f in r.json() if f["name"].startswith(prefix) and f["name"].endswith(".xlsx")]
+    if not files:
+        raise FileNotFoundError(f"Aucun fichier trouvé avec le préfixe {prefix}")
+    return sorted(files)[-1]  # le plus récent alphabétiquement (date dans le nom)
 def _fetch_excel(filename:str)->pd.DataFrame:
     url = f"{BASE_URL}/{filename}/raw?ref={BRANCH}"
     r = requests.get(url, headers={"PRIVATE-TOKEN": GITLAB_TOKEN})
@@ -18,8 +25,8 @@ def _fetch_excel(filename:str)->pd.DataFrame:
     return pd.read_excel(BytesIO(r.content))
 
 def load_data() -> tuple[pd.DataFrame, pd.DataFrame]:
-    df_cnd = _fetch_excel(FILE_CND)
-    df_cnc = _fetch_excel(FILE_CNC)
+    df_cnd = _fetch_excel(_get_latest_file("telematique__cnd"))
+    df_cnc = _fetch_excel(_get_latest_file("telematique__cnc"))
     
     df_cnd.columns = df_cnd.columns.str.strip().str.lower()
     df_cnc.columns = df_cnc.columns.str.strip().str.lower()
