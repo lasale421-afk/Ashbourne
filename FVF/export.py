@@ -39,7 +39,7 @@ def export_service(df_cnd, service, today):
             df_detail = df_cnd[
                 (df_cnd["id_irm"] == id_irm) &
                 (df_cnd["is_hp"] == 1)
-            ][["immatriculation", "id_irm", "nom_irm", "prenom_irm", "by_date", "distance_parcourue_en_km"]]
+            ][["immatriculation", "id_irm", "nom_irm", "prenom_irm", "by_date", "distance_parcourue_en_km","is_hp", "service_irm","heure_debut_trajet","heure_fin_trajet","minute_debut_trajet","minute_fin_trajet","adresse_depart","adresse_arrivee"]]
 
             if not df_detail.empty:
                 df_detail.to_excel(writer, sheet_name=nom, index=False)
@@ -73,7 +73,7 @@ def export_excel():
         filepath = export_service(df_cnd, service, today)
         filepaths.append(filepath)
 
-    send_mail(filepaths)
+    #send_mail(filepaths)
 
 if __name__ == "__main__":
     export_excel()

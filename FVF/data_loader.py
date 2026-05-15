@@ -3,7 +3,9 @@ import streamlit as st
 import requests
 from io import BytesIO
 import os
+from dotenv import load_dotenv
 
+load_dotenv()
 GITLAB_TOKEN = os.getenv("GITLAB_TOKEN")
 BRANCH = "main"
 BASE_URL = f"https://gitlab.internal.ftth.iliad.fr/api/v4/projects/1681/repository/files"
@@ -35,8 +37,11 @@ def load_data() -> pd.DataFrame:
     df_cnd["by_date"] = pd.to_datetime(df_cnd["by_date"])
     df_cnd["distance_parcourue_en_km"] = pd.to_numeric(df_cnd["distance_parcourue_en_km"], errors="coerce")
 
-    # Filtre trajets aberrants
-    ids_a_exclure = df_cnd[df_cnd["distance_parcourue_en_km"] > 1000]["id_irm"].unique()
+    # Filtre trajets 
+    ids_a_exclure = df_cnd[
+    (df_cnd["distance_parcourue_en_km"] > 1000) | 
+    (df_cnd["distance_parcourue_en_km"] == 0)
+    ]["id_irm"].unique()
     df_cnd = df_cnd[~df_cnd["id_irm"].isin(ids_a_exclure)]
 
     print("CND columns:", df_cnd.columns.tolist())
