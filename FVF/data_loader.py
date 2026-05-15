@@ -38,8 +38,7 @@ def load_data() -> pd.DataFrame:
     df_cnd["distance_parcourue_en_km"] = pd.to_numeric(df_cnd["distance_parcourue_en_km"], errors="coerce")
 
     # Filtre trajets 
-    ids_a_exclure = df_cnd[
-    (df_cnd["distance_parcourue_en_km"] > 1000)]["id_irm"].unique()
+    ids_a_exclure = df_cnd[df_cnd["distance_parcourue_en_km"] > 1000]["id_irm"].unique()
     df_cnd = df_cnd[~df_cnd["id_irm"].isin(ids_a_exclure)]
 
     print("CND columns:", df_cnd.columns.tolist())
