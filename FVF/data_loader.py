@@ -5,7 +5,7 @@ from io import BytesIO
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '.env'))
 GITLAB_TOKEN = os.getenv("GITLAB_TOKEN")
 BRANCH = "main"
 BASE_URL = f"https://gitlab.internal.ftth.iliad.fr/api/v4/projects/1681/repository/files"
@@ -39,9 +39,7 @@ def load_data() -> pd.DataFrame:
 
     # Filtre trajets 
     ids_a_exclure = df_cnd[
-    (df_cnd["distance_parcourue_en_km"] > 1000) | 
-    (df_cnd["distance_parcourue_en_km"] == 0)
-    ]["id_irm"].unique()
+    (df_cnd["distance_parcourue_en_km"] > 1000)]["id_irm"].unique()
     df_cnd = df_cnd[~df_cnd["id_irm"].isin(ids_a_exclure)]
 
     print("CND columns:", df_cnd.columns.tolist())
