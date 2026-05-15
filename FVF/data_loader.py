@@ -26,7 +26,7 @@ def _fetch_excel(filename: str) -> pd.DataFrame:
     r = requests.get(url, headers={"PRIVATE-TOKEN": GITLAB_TOKEN})
     r.raise_for_status()
     if filename.endswith(".csv"):
-        return pd.read_csv(BytesIO(r.content), sep=";")
+        return pd.read_csv(BytesIO(r.content), sep=";", decimal=",")
     return pd.read_excel(BytesIO(r.content))
 
 @st.cache_data
@@ -42,4 +42,13 @@ def load_data() -> pd.DataFrame:
     df_cnd = df_cnd[~df_cnd["id_irm"].isin(ids_a_exclure)]
 
     print("CND columns:", df_cnd.columns.tolist())
+    return df_cnd
+
+@st.cache_data
+def load_data_raw() -> pd.DataFrame:
+    df_cnd = _fetch_excel(_get_latest_file("telematique__cnd"))
+    df_cnd.columns = df_cnd.columns.str.strip().str.lower()
+    df_cnd["by_date"] = pd.to_datetime(df_cnd["by_date"])
+    df_cnd["distance_parcourue_en_km"] = pd.to_numeric(df_cnd["distance_parcourue_en_km"], errors="coerce")
+    df_cnd["id_irm"] = pd.to_numeric(df_cnd["id_irm"], errors="coerce")
     return df_cnd
