@@ -6,7 +6,6 @@ from data_loader import load_data_raw
 def generate_alertes():
     df_cnd = load_data_raw()
     print(df_cnd["distance_parcourue_en_km"].max())
-    print(df_cnd["distance_parcourue_en_km"].dtype)
     today = date.today().strftime("%Y-%m-%d")
     ids_alertes = df_cnd[df_cnd["distance_parcourue_en_km"] > 1000][
         ["id_irm", "nom_irm", "prenom_irm", "immatriculation", "service_irm","distance_parcourue_en_km"]
