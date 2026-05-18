@@ -4,3 +4,4 @@ requests
 openpyxl
 plotly
 pywin32
+python-dotenv

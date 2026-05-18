@@ -4,6 +4,7 @@ import win32com.client
 from datetime import date
 from data_loader import load_data
 from compute import top10_global
+from alerte import generate_alertes
 
 def get_top3_services(df_cnd):
     return (
@@ -73,7 +74,10 @@ def export_excel():
         filepath = export_service(df_cnd, service, today)
         filepaths.append(filepath)
 
-    send_mail(filepaths)
+    #send_mail(filepaths)
+
+
 
 if __name__ == "__main__":
     export_excel()
+    generate_alertes()
