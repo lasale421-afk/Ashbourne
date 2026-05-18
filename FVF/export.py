@@ -74,7 +74,7 @@ def export_excel():
         filepath = export_service(df_cnd, service, today)
         filepaths.append(filepath)
 
-    #send_mail(filepaths)
+    send_mail(filepaths)
 
 
 

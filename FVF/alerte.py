@@ -16,7 +16,7 @@ def generate_alertes():
         print(df_cnd["distance_parcourue_en_km"].sort_values(ascending=False).head(10))
         return
 
-    filename = os.path.abspath(f"alertes_trajets_{today}.xlsx")
+    filename = os.path.abspath(f"alertes_fichier_original_{today}.xlsx")
     ids_alertes.to_excel(filename, index=False, engine="openpyxl")
     print(f"{len(ids_alertes)} personnes avec trajets > 1000km détectées.")
     print(f"Fichier généré : {filename}")
