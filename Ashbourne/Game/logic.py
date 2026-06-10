@@ -8,6 +8,12 @@ def calculate_damage(atk, defense, variance=0.15):
     return max(1, base + random.randint(-spread, spread))
 
 
+def calculate_magic_damage(magic_atk, magic_def=0, variance=0.15):
+    base = max(1, magic_atk - magic_def)
+    spread = int(base * variance)
+    return max(1, base + random.randint(-spread, spread))
+
+
 # ── Abilities ────────────────────────────────────────────────────────────────
 
 ABILITIES = {
@@ -38,6 +44,41 @@ ABILITIES = {
     },
 }
 
+SPELLS = {
+    "Ember": {
+        "name": "Ember",
+        "desc": "Small fire bolt. 8 MP.",
+        "mp_cost": 8,
+        "power": 25,
+        "element": "fire",
+        "unlock": "start",
+    },
+    "Arcane Bolt": {
+        "name": "Arcane Bolt",
+        "desc": "Piercing magic. 12 MP.",
+        "mp_cost": 12,
+        "power": 40,
+        "element": "arcane",
+        "unlock": "district_1",
+    },
+    "Soul Flame": {
+        "name": "Soul Flame",
+        "desc": "Heavy magic. 20 MP.",
+        "mp_cost": 20,
+        "power": 70,
+        "element": "fire",
+        "unlock": "district_2",
+    },
+    "Void Tear": {
+        "name": "Void Tear",
+        "desc": "Devastating magic. 30 MP.",
+        "mp_cost": 30,
+        "power": 110,
+        "element": "arcane",
+        "unlock": "district_3",
+    },
+}
+
 
 def get_unlocked_abilities(progress):
     unlocked = ["Counter"]
@@ -48,6 +89,21 @@ def get_unlocked_abilities(progress):
     if progress.get("district_3_done"):
         unlocked.append("Warden's Oath")
     return unlocked
+
+
+def get_unlocked_spells(progress):
+    unlocked = ["Ember"]
+    if progress.get("district_1_done"):
+        unlocked.append("Arcane Bolt")
+    if progress.get("district_2_done"):
+        unlocked.append("Soul Flame")
+    if progress.get("district_3_done"):
+        unlocked.append("Void Tear")
+    return unlocked
+
+
+def get_effective_magic(player):
+    return player.get("magic", 10) + player.get("level", 1) * 2
 
 
 # ── XP / Leveling ────────────────────────────────────────────────────────────
@@ -71,8 +127,11 @@ def gain_xp(player, amount, district_number=0):
 def level_up(player):
     player["level"] += 1
     player["max_hp"] += 15
-    player["hp"] = min(player["hp"] + 15, player["max_hp"])
+    player["hp"] = player["max_hp"]  # full heal on level up
+    player["max_mp"] += 8
+    player["mp"] = player["max_mp"]  # full mana on level up
     player["atk"] += 2
+    player["magic"] += 2
     player["defense"] += 1
 
 
@@ -85,12 +144,19 @@ def apply_item(player, item):
         old = player["hp"]
         player["hp"] = min(player["hp"] + val, player["max_hp"])
         return f"Restored {player['hp'] - old} HP."
+    elif itype == "mana":
+        old = player.get("mp", 0)
+        player["mp"] = min(player["mp"] + val, player["max_mp"])
+        return f"Restored {player['mp'] - old} MP."
     elif itype == "atk":
         player["atk"] += val
         return f"ATK +{val} (permanent)."
     elif itype == "defense":
         player["defense"] += val
         return f"DEF +{val} (permanent)."
+    elif itype == "magic":
+        player["magic"] = player.get("magic", 10) + val
+        return f"MAGIC +{val} (permanent)."
     elif itype == "escape":
         return "ESCAPE"
     elif itype == "gold":
@@ -124,13 +190,17 @@ def new_player(name="Warden"):
         "xp": 0,
         "hp": 150,
         "max_hp": 150,
+        "mp": 50,
+        "max_mp": 50,
+        "magic": 12,
         "atk": 16,
         "defense": 10,
         "gold": 50,
         "gold_bonus": 1.0,
         "inventory": [
             dict(ITEMS_POOL[0]),  # Health Potion
-            dict(ITEMS_POOL[2]),  # Smoke Bomb
+            dict(ITEMS_POOL[2]),  # Mana Potion
+            dict(ITEMS_POOL[3]),  # Smoke Bomb
         ],
         "inv_cap": 12,
         "ability_cooldowns": {},

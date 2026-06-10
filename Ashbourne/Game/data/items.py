@@ -1,9 +1,11 @@
 ITEMS_POOL = [
     {"name": "Health Potion",   "type": "heal",    "value": 35,  "price": 40},
     {"name": "Large HP Potion", "type": "heal",    "value": 70,  "price": 80},
+    {"name": "Mana Potion",     "type": "mana",    "value": 30,  "price": 35},
     {"name": "Smoke Bomb",      "type": "escape",  "value": 1,   "price": 60},
     {"name": "Attack Scroll",   "type": "atk",     "value": 5,   "price": 100},
     {"name": "Defense Scroll",  "type": "defense", "value": 3,   "price": 90},
+    {"name": "Magic Scroll",    "type": "magic",   "value": 4,   "price": 100},
 ]
 
 STORY_ITEMS = [
@@ -36,7 +38,9 @@ STORY_ITEMS = [
 MAREN_SHOP = [
     {"name": "Health Potion",   "type": "heal",    "value": 35,  "price": 40},
     {"name": "Large HP Potion", "type": "heal",    "value": 70,  "price": 80},
+    {"name": "Mana Potion",     "type": "mana",    "value": 30,  "price": 35},
     {"name": "Smoke Bomb",      "type": "escape",  "value": 1,   "price": 60},
     {"name": "Attack Scroll",   "type": "atk",     "value": 5,   "price": 100},
     {"name": "Defense Scroll",  "type": "defense", "value": 3,   "price": 90},
+    {"name": "Magic Scroll",    "type": "magic",   "value": 4,   "price": 100},
 ]

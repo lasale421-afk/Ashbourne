@@ -116,6 +116,12 @@ class Game:
                 i.used = True
                 i.data["opened"] = True
 
+        # Activate quests on entering district
+        if map_id.startswith("merchant_1"):
+            self.quests.activate("the_orders_debt")
+        elif map_id.startswith("spire_1"):
+            self.quests.activate("the_last_order")
+
         # Player spawn
         if target_tx is not None and target_ty is not None:
             sx, sy = target_tx, target_ty
@@ -180,8 +186,6 @@ class Game:
                 self.combat.handle_input(event)
             elif event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.K_SPACE):
                 self.state = ST_OVERWORLD
-                if self.combat.state == CS_GAMEOVER if hasattr(CS_GAMEOVER, '__call__') else False:
-                    pass
         elif self.state == ST_OVERWORLD:
             self._handle_overworld_event(event)
         elif self.state == ST_GAMEOVER:
@@ -359,7 +363,11 @@ class Game:
         # Pick best script variant
         variant = "default"
         if key == "maren":
-            if self.progress.get("district_1_done"):
+            if self.progress.get("district_3_done"):
+                variant = "after_district_3"
+            elif self.progress.get("district_2_done"):
+                variant = "after_district_2"
+            elif self.progress.get("district_1_done"):
                 variant = "after_district_1"
         pages = scripts.get(variant, scripts.get("default", [["..."]])[0:1])
         self.dialogue.start(pages, speaker=npc.name, on_done=self._dialogue_done)
@@ -395,7 +403,7 @@ class Game:
                                     on_done=self._dialogue_done)
             self.state = ST_DIALOGUE
 
-        elif itype in ("tunnel", "dead_warden"):
+        elif itype in ("tunnel", "dead_warden", "hidden_office", "broker_contact", "journal_1", "journal_2", "journal_3", "final_choice"):
             qid  = data.get("quest")
             step = data.get("step")
             text = data.get("text", ["..."])
@@ -555,7 +563,8 @@ class Game:
         self.player_ent.draw(self.screen, self.cam_x, self.cam_y)
 
         # Floating text
-        self.floats.draw(self.screen, self.font_s, self.cam_x, self.cam_y)
+        if self.state != ST_COMBAT:
+            self.floats.draw(self.screen, self.font_s, self.cam_x, self.cam_y)
 
     def _draw_menu(self):
         self.screen.fill((8, 6, 4))

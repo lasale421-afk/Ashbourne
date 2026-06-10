@@ -10,7 +10,7 @@ DIALOGUES = {
             ["Maren looks up from a stack of papers.",
              "\"You made it back. Good.\""],
             ["\"The Undercroft entrance is at the south wall.",
-             "Whatever came through ten years ago... it's still down there.",
+             "Whatever came through ten years ago — it's still down there.",
              "The Order sealed it rather than destroyed it.\""],
             ["\"I've been trying to find out why.",
              "There are records missing. Deliberately removed.\""],
@@ -26,6 +26,20 @@ DIALOGUES = {
              "let something live beneath it.\""],
             ["\"The Merchant Quarter is next.",
              "I've heard things about the Broker.\""],
+        ],
+        "after_district_2": [
+            ["Maren looks at you with something like respect."],
+            ["\"The Broker is dead. The Merchant Quarter is safe.\""],
+            ["\"But there's one more thing. The Spire. The old Order headquarters.\""],
+            ["\"The Last Captain is still in there. Sealed himself in ten years ago.\""],
+            ["\"You need to find him. And the truth about what the Order chose.\""],
+        ],
+        "after_district_3": [
+            ["Maren is waiting for you at the center of the post."],
+            ["\"The Captain. You found him. You know what the Order did.\""],
+            ["\"The original Crack. It's still there. Still sealed.\""],
+            ["\"The same choice. The same math. The city or the truth.\""],
+            ["\"It's your choice now. The Crack is at the north wall.\""],
         ],
         "shop": [
             ["\"I have supplies. Take what you need.\""],
@@ -83,6 +97,29 @@ DIALOGUES = {
                               "Maren never finds out."]},
             ],
         },
+    },
+    "crack_broker": {
+        "default": [
+            ["The Broker stands here. Not as an enemy. As a witness."],
+            ["\"I made a deal. The city survived. That's the math.\""],
+            ["\"You want to blame me? Fine. But the cracks would have won without me.\""],
+        ],
+    },
+    "crack_first": {
+        "default": [
+            ["The First Crack. The original. It doesn't attack."],
+            ["It just... waits. Patient. Like it always was."],
+            ["\"You could seal me again. Or you could end it.\""],
+        ],
+    },
+    "crack_captain": {
+        "default": [
+            ["The Last Captain. He's different here."],
+            ["\"I sealed myself in. I thought that was the end.\""],
+            ["\"But you kept coming. You kept looking.\""],
+            ["\"The Crack is the same choice. The city or the truth.\""],
+            ["\"I've made my choice. Now you make yours.\""],
+        ],
     },
     "captain_dialogue": {
         "talk": [

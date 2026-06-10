@@ -1,8 +1,9 @@
 import pygame
 import random
-from logic import (calculate_damage, apply_buff, tick_buffs,
-                   get_effective_atk, gain_xp, apply_item,
-                   remove_from_inventory, get_unlocked_abilities, ABILITIES)
+from logic import (calculate_damage, calculate_magic_damage, apply_buff, tick_buffs,
+                   get_effective_atk, get_effective_magic, gain_xp, apply_item,
+                   remove_from_inventory, get_unlocked_abilities, get_unlocked_spells,
+                   ABILITIES, SPELLS)
 from ui import draw_hp_bar, draw_text, FloatingText
 
 # Combat states
@@ -16,6 +17,7 @@ CS_FLED         = "fled"
 MENU_MAIN   = "main"
 MENU_ITEMS  = "items"
 MENU_SKILLS = "skills"
+MENU_SPELLS = "spells"
 
 
 class CombatManager:
@@ -63,6 +65,8 @@ class CombatManager:
         self.active     = True
         # Reset per-combat state on player
         self.player["combat_buffs"] = []
+        self.player["ability_cooldowns"] = {}
+        self.ability_used_single = set()
         # Crawlers go first
         if self.enemy.get("special") == "first":
             self.state = CS_ENEMY_TURN
@@ -80,7 +84,7 @@ class CombatManager:
         unlocked = get_unlocked_abilities(self.progress)
 
         if self.menu == MENU_MAIN:
-            options = ["Attack", "Skills", "Items", "Flee"]
+            options = ["Attack", "Skills", "Spells", "Items", "Flee"]
             if event.key in (pygame.K_UP, pygame.K_w):
                 self.sel = (self.sel - 1) % len(options)
             elif event.key in (pygame.K_DOWN, pygame.K_s):
@@ -92,6 +96,9 @@ class CombatManager:
                 elif choice == "Skills":
                     self.menu = MENU_SKILLS
                     self.sel = 0
+                elif choice == "Spells":
+                    self.menu = MENU_SPELLS
+                    self.sel = 0
                 elif choice == "Items":
                     self.menu = MENU_ITEMS
                     self.sel = 0
@@ -102,7 +109,7 @@ class CombatManager:
 
         elif self.menu == MENU_ITEMS:
             inv = self.player["inventory"]
-            usable = [i for i in inv if i["type"] in ("heal", "escape")]
+            usable = [i for i in inv if i["type"] in ("heal", "mana", "escape")]
             if event.key in (pygame.K_UP, pygame.K_w):
                 self.sel = max(0, self.sel - 1)
             elif event.key in (pygame.K_DOWN, pygame.K_s):
@@ -149,6 +156,30 @@ class CombatManager:
                 self.menu = MENU_MAIN
                 self.sel = 0
 
+        elif self.menu == MENU_SPELLS:
+            spells = get_unlocked_spells(self.progress)
+            mp = self.player.get("mp", 0)
+            available = []
+            for sp in spells:
+                data = SPELLS[sp]
+                enough = mp >= data["mp_cost"]
+                available.append((sp, data, enough))
+
+            if event.key in (pygame.K_UP, pygame.K_w):
+                self.sel = max(0, self.sel - 1)
+            elif event.key in (pygame.K_DOWN, pygame.K_s):
+                self.sel = min(len(available) - 1 if available else 0, self.sel + 1)
+            elif event.key in (pygame.K_RETURN, pygame.K_e):
+                if available and 0 <= self.sel < len(available):
+                    sp, data, enough = available[self.sel]
+                    if not enough:
+                        self._log("Not enough MP!")
+                    else:
+                        self._cast_spell(sp, data)
+            elif event.key in (pygame.K_ESCAPE,):
+                self.menu = MENU_MAIN
+                self.sel = 0
+
     def _log(self, msg):
         self.log.append(msg)
         if len(self.log) > 6:
@@ -157,6 +188,13 @@ class CombatManager:
     def _flash(self, color, duration=0.2):
         self.flash_color = color
         self.flash_timer = duration
+
+    def _tick_player_cooldowns(self):
+        cd = self.player.get("ability_cooldowns", {})
+        for ab in list(cd.keys()):
+            if cd[ab] > 0:
+                cd[ab] -= 1
+        self.player["ability_cooldowns"] = cd
 
     def _player_attack(self):
         dmg = calculate_damage(get_effective_atk(self.player), self.enemy.get("defense", 0))
@@ -184,13 +222,6 @@ class CombatManager:
             if dmg > self.enemy["max_hp"] * self.enemy.get("suppress_threshold", 0.15):
                 self.enemy_suppressed = True
                 self._log(f"{self.enemy['name']} is suppressed this turn!")
-
-        tick_buffs(self.player)
-        cd = self.player.get("ability_cooldowns", {})
-        for ab in list(cd.keys()):
-            if cd[ab] > 0:
-                cd[ab] -= 1
-        self.player["ability_cooldowns"] = cd
 
         if self.enemy["hp"] <= 0:
             self._resolve_victory()
@@ -234,11 +265,28 @@ class CombatManager:
             self.menu = MENU_MAIN
             self.sel = 0
 
+    def _cast_spell(self, name, data):
+        cost = data["mp_cost"]
+        self.player["mp"] = max(0, self.player["mp"] - cost)
+        power = data["power"]
+        magic = get_effective_magic(self.player)
+        dmg = calculate_magic_damage(power + magic)
+        self.enemy["hp"] = max(0, self.enemy["hp"] - dmg)
+        self._log(f"You cast {name}! {dmg} magic damage.")
+        self._flash((120, 80, 200))
+        self.floats.add(f"-{dmg}", self.sw // 2 + 120, self.sh // 2 - 40, (180, 80, 255))
+        if self.enemy["hp"] <= 0:
+            self._resolve_victory()
+        else:
+            self._start_enemy_turn()
+
     def _start_enemy_turn(self):
         self.state = CS_ENEMY_TURN
         self.anim_timer = 0.5
         self.menu = MENU_MAIN
         self.sel = 0
+        tick_buffs(self.player)
+        self._tick_player_cooldowns()
 
     def _do_enemy_turn(self):
         enemy = self.enemy
@@ -399,11 +447,8 @@ class CombatManager:
                 self._do_enemy_turn()
 
     def draw(self, surface, bg_surface):
-        # Darken background
-        overlay = pygame.Surface((self.sw, self.sh), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 180))
-        surface.blit(bg_surface, (0, 0))
-        surface.blit(overlay, (0, 0))
+        # Solid black background — no overworld artifacts
+        surface.fill((8, 6, 4))
 
         # Screen flash
         if self.flash_timer > 0 and self.flash_color:
@@ -432,8 +477,12 @@ class CombatManager:
                   pp_x + 10, pp_y + 56, self.fs, (180, 160, 130))
         draw_hp_bar(surface, pp_x + 10, pp_y + 74, player["hp"], player["max_hp"],
                     width=pp_w - 20, height=12)
-        draw_text(surface, f"ATK {player['atk']}  DEF {player['defense']}",
-                  pp_x + 10, pp_y + 94, self.fs, (160, 150, 120))
+        draw_text(surface, f"MP  {player.get('mp', 0)} / {player.get('max_mp', 0)}",
+                  pp_x + 10, pp_y + 92, self.fs, (140, 160, 200))
+        draw_hp_bar(surface, pp_x + 10, pp_y + 110, player.get("mp", 0), player.get("max_mp", 0),
+                    width=pp_w - 20, height=8, fill=(60, 100, 180), bg=(20, 30, 50))
+        draw_text(surface, f"ATK {player['atk']}  DEF {player['defense']}  MAG {player.get('magic', 10)}",
+                  pp_x + 10, pp_y + 124, self.fs, (160, 150, 120))
 
         # Ability cooldowns
         unlocked = get_unlocked_abilities(self.progress)
@@ -520,9 +569,7 @@ class CombatManager:
         if is_boss:
             pygame.draw.rect(surface, (255, 255, 255), (ex, ey, ew, eh), 2)
 
-        # Player sprite (left center)
-        px = cx - 200
-        pygame.draw.rect(surface, (200, 180, 120), (px - 25, cy_mid - 25, 50, 50))
+        # Player sprite intentionally omitted — UI panels only
 
         # ── Combat log ────────────────────────────────────────────────────
         log_y = self.sh - 130
@@ -593,6 +640,22 @@ class CombatManager:
                       (220, 200, 120) if i == self.sel else (140, 130, 110)
                 prefix = "> " if i == self.sel else ""
                 label = ab + (f"[{cd[ab]}]" if on_cd else "") + ("[U]" if single else "")
+                w = draw_text(surface, prefix + label, x, y + 6, self.fs, col)
+                x += w + 16
+            draw_text(surface, "ESC: back", 50, y + 26, self.fs, (80, 75, 65))
+
+        elif self.menu == MENU_SPELLS:
+            spells = get_unlocked_spells(self.progress)
+            mp = self.player.get("mp", 0)
+            draw_text(surface, "SPELL:", 50, y + 6, self.fs, (160, 150, 120))
+            x = 150
+            for i, sp in enumerate(spells):
+                data = SPELLS[sp]
+                enough = mp >= data["mp_cost"]
+                col = (80, 80, 80) if not enough else \
+                      (220, 200, 120) if i == self.sel else (140, 130, 110)
+                prefix = "> " if i == self.sel else ""
+                label = f"{sp} ({data['mp_cost']} MP)"
                 w = draw_text(surface, prefix + label, x, y + 6, self.fs, col)
                 x += w + 16
             draw_text(surface, "ESC: back", 50, y + 26, self.fs, (80, 75, 65))

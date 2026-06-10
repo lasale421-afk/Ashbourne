@@ -62,11 +62,24 @@ class HUD:
         draw_text(surface, f"Gold: {player['gold']}",
                   390, 26, self.font_small, (200, 180, 80))
 
-        # ATK / DEF
+        # MP
+        mp = player.get("mp", 0)
+        max_mp = player.get("max_mp", 0)
+        draw_text(surface, f"MP {mp}/{max_mp}",
+                  530, 6, self.font_small, (140, 160, 220))
+        pygame.draw.rect(surface, (20, 30, 50), (530, 26, 80, 8))
+        if max_mp > 0:
+            pygame.draw.rect(surface, (60, 100, 180),
+                             (530, 26, int(80 * mp / max_mp), 8))
+        pygame.draw.rect(surface, (80, 100, 140), (530, 26, 80, 8), 1)
+
+        # ATK / DEF / MAG
         draw_text(surface, f"ATK {player['atk']}",
                   390, 6, self.font_small, (200, 120, 100))
         draw_text(surface, f"DEF {player['defense']}",
                   460, 6, self.font_small, (100, 160, 200))
+        draw_text(surface, f"MAG {player.get('magic', 10)}",
+                  620, 6, self.font_small, (180, 120, 200))
 
         # Active quest hint
         steps = quest_manager.active_steps()
@@ -104,7 +117,7 @@ class InventoryScreen:
             elif event.key in (pygame.K_RETURN, pygame.K_e):
                 if inv and 0 <= self.sel < len(inv):
                     item = inv[self.sel]
-                    if item["type"] in ("heal", "atk", "defense"):
+                    if item["type"] in ("heal", "mana", "atk", "defense", "magic"):
                         from logic import apply_item, remove_from_inventory
                         msg = apply_item(player, item)
                         remove_from_inventory(player, self.sel)
