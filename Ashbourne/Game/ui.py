@@ -1,4 +1,10 @@
 import pygame
+from i18n import get as _
+from logic import xp_to_next
+from logic import apply_item, remove_from_inventory
+from logic import add_to_inventory
+from data.items import MAREN_SHOP
+
 
 
 def draw_hp_bar(surface, x, y, current, max_hp, width=120, height=10,
@@ -43,14 +49,14 @@ class HUD:
                   12, 6, self.font_med, (210, 185, 130))
 
         # HP bar
-        from i18n import get as _
+        
         hp_txt = f"{_('combat_stats_hp')}  {player['hp']}/{player['max_hp']}"
         draw_text(surface, hp_txt, 12, 26, self.font_small, (180, 160, 130))
         draw_hp_bar(surface, 90, 28, player["hp"], player["max_hp"],
                     width=140, height=10)
 
         # XP
-        from logic import xp_to_next
+        
         xp_w = 100
         xp_ratio = player["xp"] / xp_to_next(player["level"])
         draw_text(surface, _("hud_xp"), 250, 26, self.font_small, (100, 140, 180))
@@ -93,7 +99,7 @@ class HUD:
         draw_text(surface, mn, self.sw - 180, 6, self.font_small, (130, 120, 100))
 
         # Controls reminder
-        from i18n import get as _
+        
         draw_text(surface, _("hud_controls"),
                   self.sw - 210, 26, self.font_small, (80, 75, 65))
 
@@ -120,7 +126,6 @@ class InventoryScreen:
                 if inv and 0 <= self.sel < len(inv):
                     item = inv[self.sel]
                     if item["type"] in ("heal", "mana", "atk", "defense", "magic"):
-                        from logic import apply_item, remove_from_inventory
                         msg = apply_item(player, item)
                         remove_from_inventory(player, self.sel)
                         self.sel = min(self.sel, len(player["inventory"]) - 1)
@@ -141,7 +146,6 @@ class InventoryScreen:
         surface.blit(bg, (px, py))
         pygame.draw.rect(surface, (120, 100, 70), (px, py, pw, ph), 2)
 
-        from i18n import get as _
         draw_text(surface, _("inv_title"), px + 12, py + 10,
                   self.font_med, (210, 185, 130))
         draw_text(surface, _("inv_gold", player['gold']),
@@ -181,7 +185,6 @@ class ShopScreen:
             return None
         if event.type != pygame.KEYDOWN:
             return None
-        from data.items import MAREN_SHOP
         items = MAREN_SHOP
         if event.key in (pygame.K_UP, pygame.K_w):
             self.sel = max(0, self.sel - 1)
@@ -191,7 +194,6 @@ class ShopScreen:
             if items and 0 <= self.sel < len(items):
                 item = items[self.sel]
                 if player["gold"] >= item["price"]:
-                    from logic import add_to_inventory
                     if add_to_inventory(player, item):
                         player["gold"] -= item["price"]
                         return ("bought", i18n.get("notify_item_obtained", item['name']))
@@ -206,8 +208,7 @@ class ShopScreen:
     def draw(self, surface, player):
         if not self.active:
             return
-        from data.items import MAREN_SHOP
-        from i18n import get as _
+        
         pw, ph = 420, 360
         px, py = (self.sw - pw) // 2, (self.sh - ph) // 2
         bg = pygame.Surface((pw, ph), pygame.SRCALPHA)
@@ -356,7 +357,6 @@ class PauseMenuScreen:
         surface.blit(bg, (px, py))
         pygame.draw.rect(surface, (120, 100, 70), (px, py, pw, ph), 2)
 
-        from i18n import get as _
         draw_text(surface, _("pause_title"), px + 12, py + 10,
                   self.fm, (210, 185, 130))
 
@@ -432,7 +432,6 @@ class OptionsScreen:
         surface.blit(bg, (px, py))
         pygame.draw.rect(surface, (120, 100, 70), (px, py, pw, ph), 2)
 
-        from i18n import get as _
         draw_text(surface, _("options_title"), px + 12, py + 10,
                   self.fm, (210, 185, 130))
 
