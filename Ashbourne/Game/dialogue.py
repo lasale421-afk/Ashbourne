@@ -222,9 +222,10 @@ class DialogueManager:
         if not self.choice_data:
             return
         opt = self.choice_data[self.choice_sel]
+        self.active = False
         if self.on_choice:
             self.on_choice(opt["result"], opt.get("response", []))
-        self.active = False
+            return  
         if self.on_done:
             self.on_done()
 

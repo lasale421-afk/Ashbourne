@@ -196,11 +196,11 @@ class ShopScreen:
                 if player["gold"] >= item["price"]:
                     if add_to_inventory(player, item):
                         player["gold"] -= item["price"]
-                        return ("bought", i18n.get("notify_item_obtained", item['name']))
+                        return ("bought", _("notify_item_obtained", item['name']))
                     else:
-                        return ("full", i18n.get("notify_inv_full"))
+                        return ("full", _("notify_inv_full"))
                 else:
-                    return ("poor", i18n.get("notify_not_enough_gold"))
+                    return ("poor", _("notify_not_enough_gold"))
         elif event.key in (pygame.K_ESCAPE, pygame.K_i):
             self.active = False
         return None
