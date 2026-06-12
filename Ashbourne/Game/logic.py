@@ -138,25 +138,26 @@ def level_up(player):
 # ── Items ────────────────────────────────────────────────────────────────────
 
 def apply_item(player, item):
+    from i18n import get as _
     itype = item.get("type")
     val = item.get("value", 0)
     if itype == "heal":
         old = player["hp"]
         player["hp"] = min(player["hp"] + val, player["max_hp"])
-        return f"Restored {player['hp'] - old} HP."
+        return _("notify_item_healed", player['hp'] - old)
     elif itype == "mana":
         old = player.get("mp", 0)
         player["mp"] = min(player["mp"] + val, player["max_mp"])
-        return f"Restored {player['mp'] - old} MP."
+        return _("notify_item_mana", player['mp'] - old)
     elif itype == "atk":
         player["atk"] += val
-        return f"ATK +{val} (permanent)."
+        return _("notify_item_atk", val)
     elif itype == "defense":
         player["defense"] += val
-        return f"DEF +{val} (permanent)."
+        return _("notify_item_def", val)
     elif itype == "magic":
         player["magic"] = player.get("magic", 10) + val
-        return f"MAGIC +{val} (permanent)."
+        return _("notify_item_magic", val)
     elif itype == "escape":
         return "ESCAPE"
     elif itype == "gold":

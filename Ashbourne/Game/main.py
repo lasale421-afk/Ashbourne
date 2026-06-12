@@ -7,7 +7,10 @@ from maps import TILE_SIZE, ALL_MAPS, PALETTES
 from entities import Player, build_entities
 from logic import new_player, apply_item, add_to_inventory
 from dialogue import DialogueManager, DIALOGUES
-from ui import HUD, InventoryScreen, FloatingText, NotificationBar, draw_text
+from ui import (HUD, InventoryScreen, ShopScreen, PauseMenuScreen, OptionsScreen,
+                FloatingText, NotificationBar, draw_text)
+from settings import Settings, SaveManager
+import i18n
 from combat import CombatManager, CS_VICTORY, CS_DEFEAT, CS_FLED
 from data.quests import QuestManager
 from data.items import STORY_ITEMS
@@ -24,6 +27,9 @@ ST_OVERWORLD = "overworld"
 ST_DIALOGUE  = "dialogue"
 ST_COMBAT    = "combat"
 ST_INVENTORY = "inventory"
+ST_SHOP      = "shop"
+ST_PAUSE     = "pause"
+ST_OPTIONS   = "options"
 ST_GAMEOVER  = "gameover"
 ST_VICTORY   = "victory_screen"
 
@@ -70,8 +76,16 @@ class Game:
         self.dialogue = DialogueManager(self.font_s, self.font_m, SCREEN_W, SCREEN_H)
         self.hud      = HUD(self.font_s, self.font_m, SCREEN_W, SCREEN_H)
         self.inv_ui   = InventoryScreen(self.font_s, self.font_m, SCREEN_W, SCREEN_H)
+        self.shop_ui  = ShopScreen(self.font_s, self.font_m, SCREEN_W, SCREEN_H)
+        self.pause_ui = PauseMenuScreen(self.font_s, self.font_m, SCREEN_W, SCREEN_H)
+        self.opt_ui   = OptionsScreen(self.font_s, self.font_m, SCREEN_W, SCREEN_H)
         self.combat   = CombatManager(self.font_s, self.font_m, self.font_l,
                                       SCREEN_W, SCREEN_H)
+        self.settings = Settings()
+        self.save_mgr = SaveManager()
+        i18n.set_language(self.settings.language)
+        self.opt_ui.lang_sel = self.opt_ui.langs.index(self.settings.language)
+        self.opt_ui.brightness = self.settings.brightness
         self.floats   = FloatingText()
         self.notify   = NotificationBar(self.font_s, SCREEN_W, SCREEN_H)
         self.bg_surface = None  # screenshot for combat overlay
@@ -181,6 +195,13 @@ class Game:
                 self.notify.push(msg)
             if not self.inv_ui.active:
                 self.state = ST_OVERWORLD
+        elif self.state == ST_SHOP:
+            result = self.shop_ui.handle_input(event, self.player)
+            if result:
+                action, msg = result
+                self.notify.push(msg)
+            if not self.shop_ui.active:
+                self.state = ST_OVERWORLD
         elif self.state == ST_COMBAT:
             if self.combat.active:
                 self.combat.handle_input(event)
@@ -188,6 +209,34 @@ class Game:
                 self.state = ST_OVERWORLD
         elif self.state == ST_OVERWORLD:
             self._handle_overworld_event(event)
+        elif self.state == ST_PAUSE:
+            action = self.pause_ui.handle_input(event)
+            if action == "resume":
+                self.state = ST_OVERWORLD
+            elif action == "options":
+                self.state = ST_OPTIONS
+                self.opt_ui.active = True
+                self.opt_ui.sel = 0
+            elif action == "save":
+                self._save_game()
+            elif action == "quit":
+                self.state = ST_MENU
+                self.pause_ui.active = False
+        elif self.state == ST_OPTIONS:
+            result = self.opt_ui.handle_input(event)
+            if result:
+                if result == "return":
+                    self.state = ST_PAUSE
+                    self.pause_ui.active = True
+                elif isinstance(result, tuple):
+                    key, val = result
+                    if key == "lang":
+                        i18n.set_language(val)
+                        self.settings.set_language(val)
+                        self.notify.push(i18n.get("save_success"))
+                    elif key == "brightness":
+                        self.settings.set_brightness(val)
+                        self.notify.push(i18n.get("save_success"))
         elif self.state == ST_GAMEOVER:
             if event.type == pygame.KEYDOWN:
                 self._start_new_game(self.player["name"])
@@ -198,16 +247,21 @@ class Game:
     def _handle_menu_event(self, event):
         if event.type != pygame.KEYDOWN:
             return
-        options = ["New Game", "Quit"]
+        options = [i18n.get("menu_new"), i18n.get("menu_continue"), i18n.get("menu_quit")]
         if event.key in (pygame.K_UP, pygame.K_w):
             self.menu_sel = max(0, self.menu_sel - 1)
         elif event.key in (pygame.K_DOWN, pygame.K_s):
             self.menu_sel = min(len(options) - 1, self.menu_sel + 1)
         elif event.key in (pygame.K_RETURN, pygame.K_SPACE, pygame.K_e):
-            if options[self.menu_sel] == "New Game":
+            if options[self.menu_sel] == i18n.get("menu_new"):
                 self.state = ST_NAME_INPUT
                 self.name_input = ""
-            elif options[self.menu_sel] == "Quit":
+            elif options[self.menu_sel] == i18n.get("menu_continue"):
+                if self.save_mgr.has_save():
+                    self._load_game()
+                else:
+                    self.notify.push(i18n.get("load_fail"), duration=2.0)
+            elif options[self.menu_sel] == i18n.get("menu_quit"):
                 pygame.quit()
                 sys.exit()
 
@@ -226,7 +280,11 @@ class Game:
     def _handle_overworld_event(self, event):
         if event.type != pygame.KEYDOWN:
             return
-        if event.key in (pygame.K_i,):
+        if event.key == pygame.K_ESCAPE:
+            self.pause_ui.active = True
+            self.pause_ui.sel = 0
+            self.state = ST_PAUSE
+        elif event.key in (pygame.K_i,):
             self.inv_ui.active = True
             self.inv_ui.sel = 0
             self.state = ST_INVENTORY
@@ -252,7 +310,7 @@ class Game:
         self.player_ent     = None
         self.load_map("hub")
         self.state = ST_OVERWORLD
-        self.notify.push(f"Welcome, {name}. The Undercroft awaits.", duration=3.0)
+        self.notify.push(i18n.get("notify_welcome", name), duration=3.0)
 
     # ── Update ────────────────────────────────────────────────────────────────
 
@@ -302,7 +360,7 @@ class Game:
                 pd = portal.portal_data
                 req = pd.get("requires")
                 if req and not self.progress.get(req):
-                    self.notify.push("This district is not yet accessible.")
+                    self.notify.push(i18n.get("notify_not_accessible"))
                     return
                 self._transition(pd["target"], pd["ttx"], pd["tty"])
                 return
@@ -343,7 +401,7 @@ class Game:
                 if not obj.used:
                     self._use_interactable(obj)
                 else:
-                    self.notify.push("Nothing more here.")
+                    self.notify.push(i18n.get("notify_chest_open"))
                 return
 
         # Check portal from facing tile (can also press E on portal)
@@ -352,7 +410,7 @@ class Game:
                 pd = portal.portal_data
                 req = pd.get("requires")
                 if req and not self.progress.get(req):
-                    self.notify.push("This district is not yet accessible.")
+                    self.notify.push(i18n.get("notify_not_accessible"))
                     return
                 self._transition(pd["target"], pd["ttx"], pd["tty"])
                 return
@@ -370,8 +428,32 @@ class Game:
             elif self.progress.get("district_1_done"):
                 variant = "after_district_1"
         pages = scripts.get(variant, scripts.get("default", [["..."]])[0:1])
-        self.dialogue.start(pages, speaker=npc.name, on_done=self._dialogue_done)
+        if key == "maren":
+            self.dialogue.start(pages, speaker=npc.name, on_done=self._maren_dialogue_done)
+        else:
+            self.dialogue.start(pages, speaker=npc.name, on_done=self._dialogue_done)
         self.state = ST_DIALOGUE
+
+    def _maren_dialogue_done(self):
+        self.dialogue.start_choice(
+            [i18n.get("dialogue_maren_default_0"), i18n.get("dialogue_maren_shop_prompt")],
+            [
+                {"label": i18n.get("dialogue_maren_shop_choice"), "result": "shop", "response": [i18n.get("dialogue_maren_shop_what")]},
+                {"label": i18n.get("dialogue_maren_shop_leave"), "result": "leave", "response": [i18n.get("dialogue_maren_shop_safe")]},
+            ],
+            speaker="Maren",
+            on_choice=self._maren_choice,
+            on_done=self._dialogue_done,
+        )
+        self.state = ST_DIALOGUE
+
+    def _maren_choice(self, result, response):
+        if result == "shop":
+            self.shop_ui.active = True
+            self.shop_ui.sel = 0
+            self.state = ST_SHOP
+        else:
+            self.state = ST_OVERWORLD
 
     def _use_interactable(self, obj):
         itype = obj.itype
@@ -380,11 +462,11 @@ class Game:
         if itype == "notice_board":
             steps = self.quests.active_steps()
             if steps:
-                pages = [["ACTIVE QUESTS"]] + [[s] for s in steps]
+                pages = [[i18n.get("notice_board_active")]] + [[s] for s in steps]
             else:
-                pages = [["No active quests."],
-                         ["Speak to Maren for guidance."]]
-            self.dialogue.start(pages, speaker="Notice Board",
+                pages = [[i18n.get("quest_no_active")],
+                         [i18n.get("quest_speak_maren")]]
+            self.dialogue.start(pages, speaker=i18n.get("notice_board_title"),
                                 on_done=self._dialogue_done)
             self.state = ST_DIALOGUE
 
@@ -395,11 +477,11 @@ class Game:
             self.used_interacts.add((self.current_map_id, obj.tx, obj.ty))
             if item:
                 added = add_to_inventory(self.player, item)
-                msg = f"Found {item['name']}!" if added else f"{item['name']} — inventory full."
-                self.dialogue.start([["You open the chest.", msg]],
+                msg = i18n.get("notify_item_obtained", item['name']) if added else i18n.get("notify_inv_full")
+                self.dialogue.start([[msg]],
                                     on_done=self._dialogue_done)
             else:
-                self.dialogue.start([["The chest is empty."]],
+                self.dialogue.start([[i18n.get("notify_chest_empty")]],
                                     on_done=self._dialogue_done)
             self.state = ST_DIALOGUE
 
@@ -416,7 +498,7 @@ class Game:
             if gives:
                 added = add_to_inventory(self.player, gives)
                 if not added:
-                    self.notify.push("Inventory full — item left behind.")
+                    self.notify.push(i18n.get("notify_inv_full"))
             pages = [line.split("\n") if "\n" in line else [line] for line in text]
             pages_flat = [[t] for t in text]
             self.dialogue.start(pages_flat, on_done=self._dialogue_done)
@@ -438,26 +520,26 @@ class Game:
                 for si in STORY_ITEMS:
                     if si["name"] == drop_name:
                         add_to_inventory(self.player, si)
-                        self.notify.push(f"Obtained: {drop_name}")
+                        self.notify.push(i18n.get("notify_item_obtained", drop_name))
             if leveled:
-                self.notify.push(f"Level up! Now Lv.{self.player['level']}", duration=3.0)
+                self.notify.push(i18n.get("notify_level_up", self.player['level']), duration=3.0)
             # Quest progress
             if enemy_name == "The First Crack":
                 self.quests.complete_step("what_was_sealed", "defeat_boss")
                 self.quests.complete_quest("what_was_sealed")
                 self.progress["district_1_done"] = True
                 self.player.setdefault("ability_cooldowns", {})
-                self.notify.push("District 1 cleared! Ability unlocked: War Cry", duration=4.0)
+                self.notify.push(i18n.get("notify_district_cleared", 1, "War Cry"), duration=4.0)
             elif enemy_name == "The Broker":
                 self.quests.complete_step("the_orders_debt", "defeat_broker")
                 self.quests.complete_quest("the_orders_debt")
                 self.progress["district_2_done"] = True
-                self.notify.push("District 2 cleared! Ability unlocked: Last Stand", duration=4.0)
+                self.notify.push(i18n.get("notify_district_cleared", 2, "Last Stand"), duration=4.0)
             elif enemy_name == "The Last Captain":
                 self.quests.complete_step("the_last_order", "confront")
                 self.quests.complete_quest("the_last_order")
                 self.progress["district_3_done"] = True
-                self.notify.push("District 3 cleared! Ability unlocked: Warden's Oath", duration=4.0)
+                self.notify.push(i18n.get("notify_district_cleared", 3, "Warden's Oath"), duration=4.0)
 
         def on_defeat():
             self.state = ST_GAMEOVER
@@ -470,7 +552,7 @@ class Game:
                           on_fled=on_fled)
 
     def _transition(self, target_map, ttx, tty):
-        self.notify.push(f"Entering: {target_map.replace('_', ' ').title()}")
+        self.notify.push(i18n.get("notify_entering", target_map.replace('_', ' ').title()))
         self.load_map(target_map, ttx, tty)
 
     # ── Drawing ───────────────────────────────────────────────────────────────
@@ -495,19 +577,77 @@ class Game:
             else:
                 self.combat.draw(self.screen, self.screen.copy())
             if not self.combat.active:
-                draw_text(self.screen, "Press ENTER to continue",
+                draw_text(self.screen, i18n.get("combat_continue"),
                           SCREEN_W // 2 - 100, SCREEN_H // 2 + 60,
                           self.font_m, (200, 195, 185))
         elif self.state == ST_DIALOGUE:
             self.dialogue.draw(self.screen)
         elif self.state == ST_INVENTORY:
             self.inv_ui.draw(self.screen, self.player)
+        elif self.state == ST_SHOP:
+            self.shop_ui.draw(self.screen, self.player)
+        elif self.state == ST_PAUSE:
+            self.pause_ui.draw(self.screen)
+        elif self.state == ST_OPTIONS:
+            self.opt_ui.draw(self.screen)
 
         # Always draw HUD and notifications over everything
         if self.state not in (ST_MENU, ST_NAME_INPUT, ST_GAMEOVER, ST_COMBAT):
             self.hud.draw(self.screen, self.player, self.current_map_id, self.quests)
 
         self.notify.draw(self.screen)
+
+        # Brightness overlay
+        if self.settings.brightness != 1.0:
+            b = self.settings.brightness
+            if b < 1.0:
+                overlay = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
+                alpha = int((1.0 - b) * 200)
+                overlay.fill((0, 0, 0, alpha))
+                self.screen.blit(overlay, (0, 0))
+            elif b > 1.0:
+                overlay = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
+                alpha = int((b - 1.0) * 80)
+                overlay.fill((255, 255, 255, alpha))
+                self.screen.blit(overlay, (0, 0))
+
+    def _save_game(self):
+        if not self.player:
+            self.notify.push(i18n.get("save_fail"))
+            return
+        killed = [list(e) for e in self.killed_enemies]
+        used = [list(u) for u in self.used_interacts]
+        state = {
+            "player": self.player,
+            "progress": self.progress,
+            "quests": self.quests.to_dict(),
+            "killed_enemies": killed,
+            "used_interacts": used,
+            "map_id": self.current_map_id,
+            "player_pos": [self.player_ent.tx, self.player_ent.ty],
+        }
+        if self.save_mgr.save(state):
+            self.notify.push(i18n.get("save_success"))
+        else:
+            self.notify.push(i18n.get("save_fail"))
+
+    def _load_game(self):
+        data = self.save_mgr.load()
+        if not data:
+            self.notify.push(i18n.get("load_fail"))
+            return False
+        self.player = data.get("player", new_player("Warden"))
+        self.progress = data.get("progress", {})
+        self.quests = QuestManager()
+        self.quests.from_dict(data.get("quests", {}))
+        self.killed_enemies = set(tuple(e) for e in data.get("killed_enemies", []))
+        self.used_interacts = set(tuple(u) for u in data.get("used_interacts", []))
+        map_id = data.get("map_id", "hub")
+        pos = data.get("player_pos", [None, None])
+        self.load_map(map_id, pos[0], pos[1])
+        self.state = ST_OVERWORLD
+        self.notify.push(i18n.get("load_success"), duration=2.0)
+        return True
 
     def _draw_overworld(self):
         palette = self.map_data.palette
@@ -568,25 +708,28 @@ class Game:
 
     def _draw_menu(self):
         self.screen.fill((8, 6, 4))
-        title = self.font_l.render("ASHBOURNE", True, (200, 170, 100))
+        title = self.font_l.render(i18n.get("menu_title"), True, (200, 170, 100))
         self.screen.blit(title, (SCREEN_W // 2 - title.get_width() // 2, 140))
-        subtitle = self.font_s.render("A city built on the grave of something older.",
+        subtitle = self.font_s.render(i18n.get("menu_tagline"),
                                       True, (100, 90, 75))
         self.screen.blit(subtitle, (SCREEN_W // 2 - subtitle.get_width() // 2, 185))
 
-        options = ["New Game", "Quit"]
+        options = [i18n.get("menu_new"), i18n.get("menu_continue"), i18n.get("menu_quit")]
         for i, opt in enumerate(options):
             col = (220, 195, 120) if i == self.menu_sel else (120, 110, 90)
+            if opt == i18n.get("menu_continue") and not self.save_mgr.has_save():
+                col = (80, 75, 65)
             prefix = "> " if i == self.menu_sel else "  "
-            surf = self.font_m.render(prefix + opt, True, col)
-            self.screen.blit(surf, (SCREEN_W // 2 - surf.get_width() // 2, 260 + i * 36))
+            label = opt
+            surf = self.font_m.render(prefix + label, True, col)
+            self.screen.blit(surf, (SCREEN_W // 2 - surf.get_width() // 2, 260 + i * 40))
 
-        hint = self.font_s.render("W/S: navigate   ENTER: select", True, (60, 55, 48))
+        hint = self.font_s.render(i18n.get("hint_navigate") + "   " + i18n.get("hint_select"), True, (60, 55, 48))
         self.screen.blit(hint, (SCREEN_W // 2 - hint.get_width() // 2, SCREEN_H - 50))
 
     def _draw_name_input(self):
         self.screen.fill((8, 6, 4))
-        draw_text(self.screen, "Enter your name, Warden.",
+        draw_text(self.screen, i18n.get("menu_subtitle"),
                   SCREEN_W // 2 - 130, 180, self.font_m, (200, 180, 130))
 
         cursor = "_" if int(self.name_cursor_blink * 2) % 2 == 0 else ""
@@ -597,14 +740,14 @@ class Game:
         pygame.draw.line(self.screen, (120, 100, 70),
                          (SCREEN_W // 2 - 120, 268), (SCREEN_W // 2 + 120, 268), 1)
 
-        hint = self.font_s.render("ENTER to confirm   ESC to go back", True, (70, 65, 55))
+        hint = self.font_s.render(i18n.get("hint_confirm") + "   " + i18n.get("hint_back"), True, (70, 65, 55))
         self.screen.blit(hint, (SCREEN_W // 2 - hint.get_width() // 2, SCREEN_H - 50))
 
     def _draw_gameover(self):
         self.screen.fill((4, 3, 2))
-        msg = self.font_l.render("YOU HAVE FALLEN", True, (180, 50, 50))
+        msg = self.font_l.render(i18n.get("combat_fallen"), True, (180, 50, 50))
         self.screen.blit(msg, (SCREEN_W // 2 - msg.get_width() // 2, SCREEN_H // 2 - 40))
-        sub = self.font_m.render("Press any key to try again.", True, (100, 90, 80))
+        sub = self.font_m.render(i18n.get("combat_continue"), True, (100, 90, 80))
         self.screen.blit(sub, (SCREEN_W // 2 - sub.get_width() // 2, SCREEN_H // 2 + 20))
 
 

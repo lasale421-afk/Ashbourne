@@ -1,4 +1,5 @@
 import pygame
+from i18n import get as _
 
 # ── Dialogue Scripts ──────────────────────────────────────────────────────────
 # Each entry is a list of pages; each page is a list of lines.
@@ -293,7 +294,7 @@ class DialogueManager:
             # Continue prompt
             if self._anim_chars >= len(" ".join(self.pages[self.page_idx]
                                                  if self.page_idx < len(self.pages) else [""])):
-                prompt = self.font_small.render("[SPACE / E]", True, (120, 110, 90))
+                prompt = self.font_small.render("[" + _("dialogue_hint") + "]", True, (120, 110, 90))
                 surface.blit(prompt, (bx + bw - prompt.get_width() - 12,
                                       by + bh - 20))
 

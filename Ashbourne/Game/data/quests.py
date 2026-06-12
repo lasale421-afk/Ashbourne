@@ -90,3 +90,29 @@ class QuestManager:
                         result.append(f"[{q['name']}] {step['desc']}")
                         break
         return result
+
+    def to_dict(self):
+        return {qid: {
+            "active": q["active"],
+            "complete": q["complete"],
+            "steps": [{"id": s["id"], "done": s["done"]} for s in q["steps"]],
+            "choice_made": q.get("choice_made"),
+            "talked_down": q.get("talked_down"),
+        } for qid, q in self.quests.items()}
+
+    def from_dict(self, data):
+        import copy
+        self.quests = copy.deepcopy(QUESTS)
+        for qid, qdata in data.items():
+            if qid not in self.quests:
+                continue
+            self.quests[qid]["active"] = qdata.get("active", False)
+            self.quests[qid]["complete"] = qdata.get("complete", False)
+            for saved_step in qdata.get("steps", []):
+                for step in self.quests[qid]["steps"]:
+                    if step["id"] == saved_step.get("id"):
+                        step["done"] = saved_step.get("done", False)
+            if "choice_made" in qdata:
+                self.quests[qid]["choice_made"] = qdata["choice_made"]
+            if "talked_down" in qdata:
+                self.quests[qid]["talked_down"] = qdata["talked_down"]
